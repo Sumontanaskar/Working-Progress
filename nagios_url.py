@@ -6,7 +6,8 @@ from datetime import datetime, timedelta
 
 buffer_days = 430
 
-def ssl_expiry_datetime(hostname):
+def ssl_expiry_datetime(hostname, port):
+    print hostname, port
     ssl_date_fmt = r'%b %d %H:%M:%S %Y %Z'
     context = ssl.create_default_context()
     conn = context.wrap_socket(
@@ -15,7 +16,7 @@ def ssl_expiry_datetime(hostname):
     )
     # 3 second timeout because Lambda has runtime limitations
     conn.settimeout(3.0)
-    conn.connect((hostname, 443))
+    conn.connect((hostname, port))
     ssl_info = conn.getpeercert()
     # parse the string from the certificate into a Python datetime object
     expires = datetime.strptime(ssl_info['notAfter'], ssl_date_fmt)
@@ -36,11 +37,14 @@ def getHostname(url):
     from urlparse import urlparse
     o = urlparse(url)
     url = o.hostname
-    return url
+    port = o.port
+    if o.port==None:
+        port = '443'
+    return url, port
 
 for url in sys.argv[1:]:
     url = str(url)
-    hostname = str(getHostname(url))
-    remaining = ssl_expiry_datetime(hostname)
+    hostname, port = getHostname(url)
+    remaining = ssl_expiry_datetime(str(hostname), int(port))
 
-#python url_check.py https://trk.mwstats.net/status https://www.mobilewalla.com/
+#python url_check.py https://trk.mwstats.net/status
